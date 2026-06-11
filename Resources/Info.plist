@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>dev.livin.meetnote</string>
+	<key>CFBundleName</key>
+	<string>meetnote</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>meetnote records your microphone to transcribe meetings on-device. Nothing leaves this Mac.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>meetnote captures system audio (your meeting app's output) to transcribe meetings on-device. Nothing leaves this Mac.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>meetnote transcribes meeting audio fully on-device.</string>
+</dict>
+</plist>
