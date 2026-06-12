@@ -4,7 +4,7 @@
 
 # meetnote
 
-Local meeting note-taker for this Mac. Records the mic **and** system audio
+Local meeting note-taker for your Mac. Records the mic **and** system audio
 (the remote side of a Teams/Zoom/Meet call), transcribes both **on-device**
 with Apple's SpeechAnalyzer (macOS 26+), and summarizes the transcript with a
 **local** LM Studio model into a folder you choose. Nothing — audio, transcript,
