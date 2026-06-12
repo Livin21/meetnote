@@ -19,6 +19,10 @@ Two front-ends over the same engine (`MeetnoteCore`):
   start-at-login) sit behind the gear icon.
 - **`meetnote`** — the CLI ([usage](#cli-usage)).
 
+<p align="center">
+  <img src="docs/panel.png" width="364" alt="MeetNote menu bar panel">
+</p>
+
 ## Quickstart
 
 Requirements: **macOS 26+, Apple Silicon**, ~10–20GB free disk. 16GB RAM works
