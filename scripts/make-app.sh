@@ -11,9 +11,10 @@ swift build -c release
 
 APP="/Applications/MeetNote.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/MeetnoteBar "$APP/Contents/MacOS/MeetNote"
 cp Resources/MeetNote-Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --sign - "$APP"
 
 echo "Installed $APP"

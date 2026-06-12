@@ -21,11 +21,19 @@ struct MeetNoteApp: App {
 final class RecordingController: ObservableObject {
     enum Phase: Equatable { case idle, recording, summarizing }
 
+    enum Status: Equatable {
+        case none
+        case info(String)
+        case success(String)
+        case error(String, detail: String?)
+    }
+
     @Published var phase: Phase = .idle
     @Published var startedAt: Date?
     @Published var segmentCount = 0
     @Published var lastLine = ""
-    @Published var statusMessage = ""
+    @Published var status: Status = .none
+    @Published var lastModelUsed: String?
     @Published var lastNotesURL: URL?
     @Published var lastTranscriptURL: URL?
 
@@ -49,7 +57,7 @@ final class RecordingController: ObservableObject {
             .filter { !$0.isEmpty }
         segmentCount = 0
         lastLine = ""
-        statusMessage = "Starting capture…"
+        status = .info("Starting capture…")
         phase = .recording
         let recorder = Recorder()
         recorder.collector.live = false
@@ -64,11 +72,11 @@ final class RecordingController: ObservableObject {
             do {
                 try await recorder.start(locale: Locale(identifier: "en_IN"))
                 self.startedAt = recorder.startedAt
-                self.statusMessage = "Transcribing on-device."
+                self.status = .info("Transcribing on-device.")
             } catch {
                 self.recorder = nil
                 self.phase = .idle
-                self.statusMessage = "Couldn't start: \(error)"
+                self.status = .error("Couldn't start: \(error.localizedDescription)", detail: "\(error)")
             }
         }
     }
@@ -76,7 +84,7 @@ final class RecordingController: ObservableObject {
     func stop() {
         guard phase == .recording, let recorder else { return }
         phase = .summarizing
-        statusMessage = "Finalizing transcription…"
+        status = .info("Finalizing transcription…")
         let topic = self.topic
         let startedAt = self.startedAt ?? Date()
         self.startedAt = nil
@@ -85,7 +93,7 @@ final class RecordingController: ObservableObject {
             self.recorder = nil
             guard !segments.isEmpty else {
                 self.phase = .idle
-                self.statusMessage = "Stopped — no speech transcribed, nothing saved."
+                self.status = .info("Stopped — no speech transcribed, nothing saved.")
                 return
             }
             do {
@@ -97,7 +105,7 @@ final class RecordingController: ObservableObject {
                 await self.summarize(transcriptURL: transcriptURL, topic: topic, startedAt: startedAt)
             } catch {
                 self.phase = .idle
-                self.statusMessage = "Failed to save transcript: \(error)"
+                self.status = .error("Failed to save transcript: \(error.localizedDescription)", detail: "\(error)")
             }
         }
     }
@@ -111,7 +119,7 @@ final class RecordingController: ObservableObject {
     }
 
     private func summarize(transcriptURL: URL, topic: String, startedAt: Date) async {
-        statusMessage = "Summarizing with the local model…"
+        status = .info("Summarizing with the local model…")
         let preferred = Config.preferredModel
         do {
             let (notesURL, model) = try await Task.detached(priority: .userInitiated) { () -> (URL, String) in
@@ -124,12 +132,13 @@ final class RecordingController: ObservableObject {
                 return (try store.writeNotes(topic: topic, startedAt: startedAt, body: body, transcriptURL: transcriptURL, model: model), model)
             }.value
             lastNotesURL = notesURL
-            statusMessage = "Notes saved (\(model))."
+            lastModelUsed = model
+            status = .success("Notes saved.")
             phase = .idle
             NSWorkspace.shared.open(notesURL)
         } catch {
             phase = .idle
-            statusMessage = "Transcript is safe; summary failed (is LM Studio's server running? `lms server start`): \(error)"
+            status = .error("Summary failed — transcript is safe. Is LM Studio's server running? (`lms server start`)", detail: "\(error)")
         }
     }
 }
@@ -138,6 +147,8 @@ struct PanelView: View {
     @ObservedObject var controller: RecordingController
     @State private var topicText = ""
     @State private var withText = ""
+    @State private var showSettings = false
+    @FocusState private var topicFocused: Bool
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var tapCheck: String?
     @AppStorage("modelID", store: Config.shared) private var modelID = ""
@@ -149,30 +160,82 @@ struct PanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            header
             switch controller.phase {
             case .idle: idle
             case .recording: recording
             case .summarizing: summarizing
             }
-            if !controller.statusMessage.isEmpty {
-                Text(controller.statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            statusLine
+            if showSettings {
+                Divider()
+                settings
             }
-            Divider()
-            footer
         }
         .padding(12)
         .frame(width: 320)
     }
 
+    private var header: some View {
+        HStack(spacing: 10) {
+            Text("MeetNote").font(.headline)
+            Spacer()
+            Button {
+                showSettings.toggle()
+            } label: {
+                Image(systemName: "gearshape")
+                    .foregroundStyle(showSettings ? Color.accentColor : Color(nsColor: .secondaryLabelColor))
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Image(systemName: "power")
+                    .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+            }
+            .buttonStyle(.plain)
+            .help("Quit MeetNote")
+        }
+    }
+
+    @ViewBuilder
+    private var statusLine: some View {
+        switch controller.status {
+        case .none:
+            EmptyView()
+        case .info(let text):
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        case .success(let text):
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text(text)
+            }
+            .font(.caption)
+            .help(controller.lastModelUsed.map { "Summarized with \($0)" } ?? "")
+        case .error(let message, let detail):
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                Text(message)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
+            .help(detail ?? message)
+        }
+    }
+
     private var idle: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("MeetNote").font(.headline)
             TextField("Topic (e.g. weekly sync)", text: $topicText)
                 .textFieldStyle(.roundedBorder)
-            TextField("With (e.g. Asha, Ben) — optional", text: $withText)
+                .focused($topicFocused)
+            TextField("Participants (optional)", text: $withText)
                 .textFieldStyle(.roundedBorder)
             Button {
                 controller.start(topicText: topicText, withText: withText)
@@ -182,12 +245,19 @@ struct PanelView: View {
             }
             .keyboardShortcut(.defaultAction)
             if let notes = controller.lastNotesURL {
-                Button("Open last notes") { NSWorkspace.shared.open(notes) }
-                    .buttonStyle(.link)
+                Button {
+                    NSWorkspace.shared.open(notes)
+                } label: {
+                    Label("Open last notes", systemImage: "doc.text")
+                }
+                .buttonStyle(.link)
             } else if controller.lastTranscriptURL != nil {
                 Button("Summarize last transcript") { controller.summarizeLastTranscript() }
                     .buttonStyle(.link)
             }
+        }
+        .onAppear {
+            DispatchQueue.main.async { topicFocused = true }
         }
     }
 
@@ -218,6 +288,7 @@ struct PanelView: View {
                     .frame(maxWidth: .infinity)
             }
             .keyboardShortcut(.defaultAction)
+            .tint(.red)
         }
     }
 
@@ -228,46 +299,54 @@ struct PanelView: View {
         }
     }
 
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Picker("Model", selection: $modelID) {
-                Text("Auto").tag("")
-                ForEach(pickerModels, id: \.self) { id in
-                    Text(id).tag(id)
+    private var settings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 8, verticalSpacing: 8) {
+                GridRow {
+                    Text("Model")
+                        .foregroundStyle(.secondary)
+                        .gridColumnAlignment(.trailing)
+                    Picker("Model", selection: $modelID) {
+                        Text("Auto").tag("")
+                        ForEach(pickerModels, id: \.self) { id in
+                            Text(shortModelName(id)).tag(id)
+                        }
+                    }
+                    .labelsHidden()
+                    .help(modelID.isEmpty ? "Picks a loaded LM Studio model automatically" : modelID)
+                }
+                GridRow {
+                    Text("My name").foregroundStyle(.secondary)
+                    TextField("Used as \"Me\" in notes", text: $ownerName)
+                        .textFieldStyle(.roundedBorder)
+                }
+                GridRow {
+                    Text("Teammates").foregroundStyle(.secondary)
+                    TextField("Comma-separated; fixes misheard names", text: $knownNames)
+                        .textFieldStyle(.roundedBorder)
+                }
+                GridRow {
+                    Text("Folder").foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Button {
+                            NSWorkspace.shared.open(Store().meetingsDir)
+                        } label: {
+                            Label(abbreviatedPath(outputDirDisplay), systemImage: "folder")
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        .buttonStyle(.link)
+                        .help("Open meetings folder")
+                        Spacer(minLength: 4)
+                        Button("Change…") { chooseOutputFolder() }
+                            .buttonStyle(.link)
+                    }
                 }
             }
             .font(.caption)
-            .onAppear { refreshModels() }
             if let modelsNote {
                 Text(modelsNote).font(.caption).foregroundStyle(.secondary)
             }
-            HStack {
-                Text("My name").font(.caption)
-                TextField("Used as \"Me\" in notes", text: $ownerName)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.caption)
-            }
-            HStack {
-                Text("Teammates").font(.caption)
-                TextField("Comma-separated; fixes misheard names", text: $knownNames)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.caption)
-            }
-            HStack {
-                Text(abbreviatedPath(outputDirDisplay))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer()
-                Button("Change…") { chooseOutputFolder() }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
-            Button("Open meetings folder") {
-                NSWorkspace.shared.open(Store().meetingsDir)
-            }
-            .buttonStyle(.link)
             Button("Test system audio") {
                 tapCheck = "…"
                 Task {
@@ -283,6 +362,7 @@ struct PanelView: View {
                 }
             }
             .buttonStyle(.link)
+            .font(.caption)
             if let tapCheck {
                 Text(tapCheck).font(.caption).foregroundStyle(.secondary)
             }
@@ -300,13 +380,13 @@ struct PanelView: View {
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }
                 }
-            HStack {
-                Spacer()
-                Button("Quit MeetNote") { NSApplication.shared.terminate(nil) }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
         }
+        .onAppear { refreshModels() }
+    }
+
+    /// "google/gemma-4-12b-qat" → "gemma-4-12b-qat"; full id stays in the tooltip.
+    private func shortModelName(_ id: String) -> String {
+        id.components(separatedBy: "/").last ?? id
     }
 
     /// Keep the stored choice selectable even when LM Studio is offline or

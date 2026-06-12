@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="512" y1="100" x2="512" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#58A0FF"/>
+      <stop offset="1" stop-color="#1B5FD9"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="512" y1="288" x2="512" y2="800" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E9F0FB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- macOS squircle: 824x824 centered on the 1024 grid -->
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#bg)"/>
+
+  <!-- soft offset shadow under the bubble (no blur: CoreSVG-safe) -->
+  <path d="M 342 304
+           H 682 Q 782 304 782 404
+           V 584 Q 782 684 682 684
+           H 514 Q 502 782 388 816
+           Q 442 756 438 684
+           H 342 Q 242 684 242 584
+           V 404 Q 242 304 342 304 Z"
+        fill="#0A3A8C" opacity="0.25"/>
+
+  <!-- speech bubble with tail -->
+  <path d="M 342 288
+           H 682 Q 782 288 782 388
+           V 568 Q 782 668 682 668
+           H 514 Q 502 766 388 800
+           Q 442 740 438 668
+           H 342 Q 242 668 242 568
+           V 388 Q 242 288 342 288 Z"
+        fill="url(#bubble)"/>
+
+  <!-- record dot + note lines -->
+  <circle cx="372" cy="376" r="32" fill="#FF3B30"/>
+  <rect x="434" y="348" width="250" height="56" rx="28" fill="#A9C3EA"/>
+  <rect x="340" y="450" width="344" height="56" rx="28" fill="#A9C3EA"/>
+  <rect x="340" y="552" width="230" height="56" rx="28" fill="#A9C3EA"/>
+</svg>
