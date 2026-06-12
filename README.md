@@ -25,6 +25,37 @@ Two front-ends over the same engine (`MeetnoteCore`):
 
 ## Quickstart
 
+Using an AI agent? Copy this prompt into Claude Code (or any agent that can
+run shell commands) on the target Mac:
+
+```text
+Install and set up MeetNote (https://github.com/Livin21/meetnote), a fully
+local meeting note-taker for macOS, on this Mac.
+
+1. Verify requirements: macOS 26+, Apple Silicon, ~10–20GB free disk.
+   Stop and tell me if any are missing.
+2. Ensure Xcode Command Line Tools are installed (xcode-select --install).
+3. Ensure LM Studio is installed (https://lmstudio.ai — or
+   `brew install --cask lm-studio` if Homebrew is available). Download a
+   summarization model: google/gemma-4-26b-a4b if this Mac has 32GB+ RAM,
+   else google/gemma-4-12b-qat (via the LM Studio UI or `lms get`). Start
+   the server: `lms server start`.
+4. Clone the repo and run ./scripts/make-app.sh — it builds and installs
+   /Applications/MeetNote.app. Then `open /Applications/MeetNote.app`.
+   Optionally symlink the CLI:
+   ln -sf "$PWD/.build/release/meetnote" ~/.local/bin/meetnote
+5. You cannot grant macOS permissions yourself — walk me through them:
+   I'll click the MeetNote menu bar icon, press "Start recording" once, and
+   allow the Microphone prompt. Then I'll add MeetNote in System Settings →
+   Privacy & Security → Screen & System Audio Recording → "System Audio
+   Recording Only" tab → "+". There is no automatic prompt for that one;
+   without it system audio records as silence.
+6. Have me verify with "Test system audio" in the panel's settings (gear
+   icon), and set my name and output folder there too.
+```
+
+Or set it up manually:
+
 Requirements: **macOS 26+, Apple Silicon**, ~10–20GB free disk. 16GB RAM works
 with the small model; 32GB+ is comfortable with the recommended one.
 
