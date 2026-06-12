@@ -4,11 +4,13 @@
 
 # meetnote
 
-Local meeting note-taker for your Mac. Records the mic **and** system audio
-(the remote side of a Teams/Zoom/Meet call), transcribes both **on-device**
-with Apple's SpeechAnalyzer (macOS 26+), and summarizes the transcript with a
-**local** LM Studio model into a folder you choose. Nothing — audio, transcript,
-or summary — ever leaves the machine.
+**Privacy-first meeting notes for macOS — recording, transcription, and
+summarization all run locally. Nothing ever leaves your Mac.**
+
+Records the mic **and** system audio (the remote side of a Teams/Zoom/Meet
+call), transcribes both **on-device** with Apple's SpeechAnalyzer (macOS 26+),
+and summarizes the transcript with a **local** LM Studio model into a folder
+you choose. Nothing — audio, transcript, or summary — touches the network.
 
 Two front-ends over the same engine (`MeetnoteCore`):
 
